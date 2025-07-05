@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel, HttpUrl
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.collectors.http_fetcher import fetch_html, FetchResult
 from app.parsers.html_parser import parse_html, ParsedPage
@@ -109,9 +110,16 @@ async def run_audit(request: AuditRequest):
         ai=ai_resp,
     )
 
-@app.get("/")
+# Mount static files
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+
+# Serve UI
+
+
+@app.get("/", response_class=HTMLResponse)
 def read_root():
-    return {"message": "Добро пожаловать в LP Screening API!"}
+    return FileResponse("app/static/index.html")
 
 
 # -------------------------------------------------

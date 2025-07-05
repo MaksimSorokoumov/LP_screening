@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <title>LP Screening – UI</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        h1 { color: #333; }
+        form { margin-bottom: 1rem; }
+        input[type="url"] { width: 60%; padding: 8px; }
+        button { padding: 8px 16px; }
+        iframe { width: 100%; height: 800px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>LP Screening</h1>
+    <p>Введите URL лендинга и получите отчёт.</p>
+
+    <form id="auditForm">
+        <input type="url" id="urlInput" placeholder="https://example.com" required />
+        <button type="submit">Аудит</button>
+    </form>
+
+    <iframe id="reportFrame" title="Отчёт" style="display:none;"></iframe>
+
+    <script>
+        const form = document.getElementById('auditForm');
+        const input = document.getElementById('urlInput');
+        const frame = document.getElementById('reportFrame');
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const url = encodeURIComponent(input.value.trim());
+            if (!url) return;
+            frame.style.display = 'block';
+            frame.src = `/audit/html?url=${url}`;
+        });
+    </script>
+</body>
+</html> 
