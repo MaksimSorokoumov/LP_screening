@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel, HttpUrl
 
 from app.collectors.http_fetcher import fetch_html, FetchResult
+from app.parsers.html_parser import parse_html, ParsedPage
 
 app = FastAPI(
     title="LP Screening API",
@@ -29,6 +30,16 @@ class FetchInfo(BaseModel):
 class AuditResponse(BaseModel):
     message: str
     fetch: FetchInfo
+    parse: "ParseInfo | None" = None
+
+
+class ParseInfo(BaseModel):
+    title: str | None
+    description_present: bool
+    h1_count: int
+    h2_count: int
+    h3_count: int
+    forms: int
 
 
 @app.post("/audit", response_model=AuditResponse)
@@ -39,8 +50,6 @@ async def run_audit(request: AuditRequest):
     # Шаг 1. Забираем HTML и проверяем SSL
     fetch_result: FetchResult = fetch_html(request.url)
 
-    # TODO: Передать HTML в последующие модули анализа
-
     fetch_info = FetchInfo(
         success=fetch_result.success,
         ssl_ok=fetch_result.ssl_ok,
@@ -48,9 +57,22 @@ async def run_audit(request: AuditRequest):
         error=fetch_result.error,
     )
 
+    parse_info: ParseInfo | None = None
+    if fetch_result.success and fetch_result.html:
+        parsed: ParsedPage = parse_html(fetch_result.html, request.url)
+        parse_info = ParseInfo(
+            title=parsed.title,
+            description_present=bool(parsed.meta_description),
+            h1_count=len(parsed.headings.get(1, [])),
+            h2_count=len(parsed.headings.get(2, [])),
+            h3_count=len(parsed.headings.get(3, [])),
+            forms=parsed.forms_count,
+        )
+
     return AuditResponse(
         message="Аудит выполнен. Дополнительные проверки будут добавлены позже.",
         fetch=fetch_info,
+        parse=parse_info,
     )
 
 @app.get("/")
