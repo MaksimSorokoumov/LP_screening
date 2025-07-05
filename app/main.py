@@ -4,6 +4,7 @@ from pydantic import BaseModel, HttpUrl
 from app.collectors.http_fetcher import fetch_html, FetchResult
 from app.parsers.html_parser import parse_html, ParsedPage
 from app.analyzers.basic import evaluate_basic, RuleResult, RuleStatus
+from app.ai.gpt_client import analyze_with_gpt, AIResult
 
 app = FastAPI(
     title="LP Screening API",
@@ -33,6 +34,7 @@ class AuditResponse(BaseModel):
     fetch: FetchInfo
     parse: "ParseInfo | None" = None
     rules: list["RuleResponse"] | None = None
+    ai: "AIResponse | None" = None
 
 
 class ParseInfo(BaseModel):
@@ -49,6 +51,11 @@ class RuleResponse(BaseModel):
     name: str
     status: RuleStatus
     message: str
+
+
+class AIResponse(BaseModel):
+    readability: str
+    recommendations: list[str]
 
 
 @app.post("/audit", response_model=AuditResponse)
@@ -83,11 +90,21 @@ async def run_audit(request: AuditRequest):
         rule_results: list[RuleResult] = evaluate_basic(parsed, fetch_result)
         rules_resp = [RuleResponse(name=r.name, status=r.status, message=r.message) for r in rule_results]
 
+    ai_resp: AIResponse | None = None
+    if parse_info and fetch_result.success:
+        ai_result: AIResult | None = analyze_with_gpt(parsed)
+        if ai_result:
+            ai_resp = AIResponse(
+                readability=ai_result.readability,
+                recommendations=ai_result.recommendations,
+            )
+
     return AuditResponse(
         message="Аудит выполнен.",
         fetch=fetch_info,
         parse=parse_info,
         rules=rules_resp,
+        ai=ai_resp,
     )
 
 @app.get("/")
