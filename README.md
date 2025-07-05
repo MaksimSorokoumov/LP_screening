@@ -64,33 +64,95 @@
     uvicorn app.main:app --reload
     ```
 
-6.  Откройте в браузере `http://127.0.0.1:8000/docs` для доступа к Swagger UI и тестирования API.
+6.  Откройте в браузере `http://127.0.0.1:8000/` для доступа к UI приложения или `http://127.0.0.1:8000/docs` для доступа к Swagger UI и тестирования API.
 
-## Пример запроса
-```bash
-curl -X POST "http://127.0.0.1:8000/audit" \
-     -H "Content-Type: application/json" \
-     -d '{"url": "https://example.com"}'
-```
+## API Endpoints
 
-Ответ (пример):
-```json
-{
-  "url": "https://example.com",
-  "status": "in_progress",
-  "message": "Аудит пока заглушка. Скоро здесь будет результат."
-}
-```
+*   **POST /audit**
+    *   **Описание:** Запускает полный аудит посадочной страницы и возвращает результаты в формате JSON.
+    *   **Запрос:**
+        ```json
+        {
+          "url": "https://example.com"
+        }
+        ```
+    *   **Ответ (пример):**
+        ```json
+        {
+          "message": "Аудит выполнен.",
+          "fetch": {
+            "success": true,
+            "ssl_ok": true,
+            "status_code": 200,
+            "error": null
+          },
+          "parse": {
+            "title": "Example Domain",
+            "description_present": false,
+            "h1_count": 1,
+            "h2_count": 0,
+            "h3_count": 0,
+            "forms": 0
+          },
+          "rules": [
+            {
+              "name": "SSL",
+              "status": "OK",
+              "message": "SSL-сертификат корректен."
+            },
+            {
+              "name": "Title",
+              "status": "OK",
+              "message": "Title присутствует и имеет оптимальную длину."
+            }
+            // ... другие правила
+          ],
+          "ai": {
+            "readability": "easy",
+            "recommendations": [
+              "Убедитесь, что мета-описание присутствует и точно отражает содержание страницы.",
+              "Добавьте формы для сбора лидов, если это необходимо для вашей цели."
+              // ... другие рекомендации
+            ]
+          }
+        }
+        ```
+
+*   **GET /audit/html**
+    *   **Описание:** Запускает аудит и возвращает полный HTML-отчёт для заданной страницы.
+    *   **Запрос:** `http://127.0.0.1:8000/audit/html?url=https://example.com`
+    *   **Ответ:** HTML-страница с отчётом.
 
 ## Структура проекта
 ```
-app/
- ├── main.py            # Точка входа FastAPI
- ├── collectors/        # HTTP-фетчеры и вспом. модули
- ├── parsers/           # HTML-парсер
- ├── analyzers/         # Правила аудита
- ├── ai/                # Обёртка OpenAI, prompt-шаблоны
- └── reports/           # Рендер отчётов (HTML/MD)
+LP_optimiser/
+├── app/
+│   ├── main.py            # Точка входа FastAPI, основные эндпоинты
+│   ├── collectors/        # Модули для сбора данных (HTTP-фетчеры, robots.txt, sitemap.xml)
+│   │   ├── __init__.py
+│   │   └── http_fetcher.py
+│   ├── parsers/           # Модули для парсинга HTML и извлечения данных
+│   │   ├── __init__.py
+│   │   └── html_parser.py
+│   ├── analyzers/         # Модули для применения правил аудита
+│   │   ├── __init__.py
+│   │   └── basic.py
+│   ├── ai/                # Модули для работы с AI API (OpenAI GPT)
+│   │   ├── __init__.py
+│   │   └── gpt_client.py
+│   ├── reports/           # Модули для рендеринга отчётов (HTML, PDF и т.д.)
+│   │   ├── __init__.py
+│   │   ├── renderer.py
+│   │   └── templates/     # Шаблоны Jinja2
+│   │       └── report.html
+│   └── static/            # Статические файлы (UI-интерфейс)
+│       └── index.html
+├── .env.template          # Шаблон для переменных окружения
+├── .gitignore             # Игнорируемые файлы для Git
+├── README.md              # Описание проекта
+├── requirements.txt       # Список зависимостей Python
+└── docs/
+    └── requirements_mvp.md # Детальные требования и дорожная карта проекта
 ```
 
 ## Переменные окружения
