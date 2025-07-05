@@ -3,6 +3,7 @@ from pydantic import BaseModel, HttpUrl
 
 from app.collectors.http_fetcher import fetch_html, FetchResult
 from app.parsers.html_parser import parse_html, ParsedPage
+from app.analyzers.basic import evaluate_basic, RuleResult, RuleStatus
 
 app = FastAPI(
     title="LP Screening API",
@@ -31,6 +32,7 @@ class AuditResponse(BaseModel):
     message: str
     fetch: FetchInfo
     parse: "ParseInfo | None" = None
+    rules: list["RuleResponse"] | None = None
 
 
 class ParseInfo(BaseModel):
@@ -40,6 +42,13 @@ class ParseInfo(BaseModel):
     h2_count: int
     h3_count: int
     forms: int
+    rules: list["RuleResponse"] | None = None
+
+
+class RuleResponse(BaseModel):
+    name: str
+    status: RuleStatus
+    message: str
 
 
 @app.post("/audit", response_model=AuditResponse)
@@ -69,10 +78,16 @@ async def run_audit(request: AuditRequest):
             forms=parsed.forms_count,
         )
 
+    rules_resp: list[RuleResponse] | None = None
+    if parse_info and fetch_result.success:
+        rule_results: list[RuleResult] = evaluate_basic(parsed, fetch_result)
+        rules_resp = [RuleResponse(name=r.name, status=r.status, message=r.message) for r in rule_results]
+
     return AuditResponse(
-        message="Аудит выполнен. Дополнительные проверки будут добавлены позже.",
+        message="Аудит выполнен.",
         fetch=fetch_info,
         parse=parse_info,
+        rules=rules_resp,
     )
 
 @app.get("/")
