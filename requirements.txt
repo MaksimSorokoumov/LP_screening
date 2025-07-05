@@ -4,4 +4,5 @@ requests
 beautifulsoup4
 openai
 python-dotenv
-readability-metrics 
+readability-metrics
+jinja2 

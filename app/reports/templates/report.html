@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <title>LP Screening Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        h1 { color: #333; }
+        table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background: #f5f5f5; }
+        .OK { color: green; }
+        .WARNING { color: orange; }
+        .ERROR { color: red; }
+        ul { padding-left: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Отчёт по странице {{ url }}</h1>
+
+    <h2>Техническая информация</h2>
+    <p>HTTP статус: {{ fetch.status_code or '—' }}, SSL: {{ 'OK' if fetch.ssl_ok else 'Проблема' }}</p>
+
+    {% if parse %}
+    <h2>Базовый анализ</h2>
+    <table>
+        <tr><th>Показатель</th><th>Значение</th></tr>
+        <tr><td>Title</td><td>{{ parse.title or '—' }}</td></tr>
+        <tr><td>Meta description</td><td>{{ 'Да' if parse.description_present else 'Нет' }}</td></tr>
+        <tr><td>H1</td><td>{{ parse.h1_count }}</td></tr>
+        <tr><td>H2</td><td>{{ parse.h2_count }}</td></tr>
+        <tr><td>H3</td><td>{{ parse.h3_count }}</td></tr>
+        <tr><td>Forms</td><td>{{ parse.forms }}</td></tr>
+    </table>
+    {% endif %}
+
+    {% if rules %}
+    <h2>Чек-лист</h2>
+    <table>
+        <tr><th>Правило</th><th>Статус</th><th>Комментарий</th></tr>
+        {% for r in rules %}
+        <tr>
+            <td>{{ r.name }}</td>
+            <td class="{{ r.status }}">{{ r.status }}</td>
+            <td>{{ r.message }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+
+    {% if ai %}
+    <h2>Рекомендации ИИ</h2>
+    <p><strong>Читаемость:</strong> {{ ai.readability }}</p>
+    <ul>
+        {% for rec in ai.recommendations %}
+        <li>{{ rec }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <footer style="margin-top: 2rem; font-size: 0.9em; color: #666;">
+        Сгенерировано LP Screening.
+    </footer>
+</body>
+</html> 

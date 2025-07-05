@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 from pydantic import BaseModel, HttpUrl
+from fastapi.responses import HTMLResponse
 
 from app.collectors.http_fetcher import fetch_html, FetchResult
 from app.parsers.html_parser import parse_html, ParsedPage
 from app.analyzers.basic import evaluate_basic, RuleResult, RuleStatus
 from app.ai.gpt_client import analyze_with_gpt, AIResult
+from app.reports.renderer import render_report
 
 app = FastAPI(
     title="LP Screening API",
@@ -109,4 +111,64 @@ async def run_audit(request: AuditRequest):
 
 @app.get("/")
 def read_root():
-    return {"message": "Добро пожаловать в LP Screening API!"} 
+    return {"message": "Добро пожаловать в LP Screening API!"}
+
+
+# -------------------------------------------------
+#   HTML report endpoint
+# -------------------------------------------------
+
+
+@app.get("/audit/html", response_class=HTMLResponse)
+async def audit_html(url: HttpUrl):
+    """Возвращает HTML-отчёт для заданного URL."""
+    # Повторяем те же шаги, что и в /audit
+    fetch_result: FetchResult = fetch_html(str(url))
+
+    parsed: ParsedPage | None = None
+    if fetch_result.success and fetch_result.html:
+        parsed = parse_html(fetch_result.html, str(url))
+
+    rule_results: list[RuleResult] | None = None
+    if parsed:
+        rule_results = evaluate_basic(parsed, fetch_result)
+
+    ai_result: AIResult | None = None
+    if parsed:
+        ai_result = analyze_with_gpt(parsed)
+
+    # Build dataclass instances we already defined for renderer.
+    fetch_info = FetchInfo(
+        success=fetch_result.success,
+        ssl_ok=fetch_result.ssl_ok,
+        status_code=fetch_result.status_code,
+        error=fetch_result.error,
+    )
+
+    parse_info: ParseInfo | None = None
+    if parsed:
+        parse_info = ParseInfo(
+            title=parsed.title,
+            description_present=bool(parsed.meta_description),
+            h1_count=len(parsed.headings.get(1, [])),
+            h2_count=len(parsed.headings.get(2, [])),
+            h3_count=len(parsed.headings.get(3, [])),
+            forms=parsed.forms_count,
+        )
+
+    ai_resp: AIResponse | None = None
+    if ai_result:
+        ai_resp = AIResponse(
+            readability=ai_result.readability,
+            recommendations=ai_result.recommendations,
+        )
+
+    html = render_report(
+        url=str(url),
+        fetch=fetch_info,
+        parse=parse_info,
+        rules=rule_results,
+        ai=ai_resp,
+    )
+
+    return HTMLResponse(content=html) 
