@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+requests
+beautifulsoup4
+openai
+python-dotenv
+readability-metrics 
